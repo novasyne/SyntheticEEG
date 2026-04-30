@@ -137,7 +137,7 @@ def fig2_condition_comparison(df: pd.DataFrame):
         ("Interpolation\n→Cross",           sc[sc["Synth_Method"] == "Interpolation"], BLUES["Interpolation"]),
         ("VAE\n→Cross",                     sc[sc["Synth_Method"] == "VAE"],           BLUES["VAE"]),
         ("GAN\n→Cross",                     sc[sc["Synth_Method"] == "GAN"],           BLUES["GAN"]),
-        ("Real + Interpolation\n+DA→Cross", da[da["Synth_Method"] == "Prototype-DA"], BLUES["Interp + DA"]),
+        ("Real + DA-Synthetic\n→Cross", da, BLUES["Interp + DA"]),
     ]
 
     labels = [c[0] for c in conditions]
@@ -206,7 +206,7 @@ def fig2_condition_comparison(df: pd.DataFrame):
         mpatches.Patch(facecolor=BLUES["Interpolation"],edgecolor="black", label="Synthetic — Interpolation"),
         mpatches.Patch(facecolor=BLUES["VAE"],          edgecolor="black", label="Synthetic — VAE"),
         mpatches.Patch(facecolor=BLUES["GAN"],          edgecolor="black", label="Synthetic — GAN"),
-        mpatches.Patch(facecolor=BLUES["Interp + DA"],  edgecolor="black", label="Synthetic — Interpolation + Prototype-DA"),
+        mpatches.Patch(facecolor=BLUES["Interp + DA"],  edgecolor="black", label="Real + Domain-Adapted Synthetic"),
     ]
     legend = ax.legend(
         handles=patches,

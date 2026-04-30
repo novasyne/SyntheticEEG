@@ -10,7 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import GridSearchCV, StratifiedKFold
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, LeaveOneGroupOut
 from sklearn.metrics import (
     roc_auc_score, f1_score, precision_score, recall_score, accuracy_score
 )
@@ -486,6 +486,126 @@ def synthetic_to_real_evaluate(
     )
 
 
+_SYNTH_CORR_THRESHOLD = 0.2
+_SYNTH_NOISE_LEVEL    = 0.05
+_SYNTH_N              = 70
+
+
+def _generate_interpolation_synthetic(
+    X_held_in: np.ndarray, y_held_in: np.ndarray,
+    n: int = _SYNTH_N, seed: int = 42,
+) -> tuple:
+    rng = np.random.default_rng(seed)
+
+    scaler   = StandardScaler()
+    X_norm   = scaler.fit_transform(X_held_in)
+    labels   = y_held_in.astype(int)
+
+    class_counts = np.bincount(labels, minlength=2)
+    class_probs  = class_counts / max(len(labels), 1)
+    n_per_class  = np.round(class_probs * n).astype(int)
+    n_per_class[-1] = n - n_per_class[:-1].sum()
+
+    synth_X, synth_y = [], []
+
+    for cls in [0, 1]:
+        n_cls = int(n_per_class[cls])
+        if n_cls == 0:
+            continue
+        idx   = np.where(labels == cls)[0]
+        feats = X_norm[idx]
+
+        if len(idx) < 2:
+            for _ in range(n_cls):
+                noise = rng.normal(0, _SYNTH_NOISE_LEVEL, feats.shape[1])
+                synth_X.append(feats[0] + noise)
+                synth_y.append(cls)
+            continue
+
+        corr = np.corrcoef(feats)
+        np.fill_diagonal(corr, 0)
+        pairs = np.argwhere(corr > _SYNTH_CORR_THRESHOLD)
+        if len(pairs) == 0:
+            nc    = len(feats)
+            pairs = np.array([(i, j) for i in range(nc)
+                              for j in range(nc) if i != j])
+
+        for _ in range(n_cls):
+            pick         = rng.integers(len(pairs))
+            i1, i2      = pairs[pick]
+            alpha        = rng.uniform(0.3, 0.7)
+            new_norm     = feats[i1] + (feats[i2] - feats[i1]) * alpha
+            noise_std    = np.std(np.vstack([feats[i1], feats[i2]]), axis=0)
+            noise        = rng.normal(0, 1, new_norm.shape) * noise_std * _SYNTH_NOISE_LEVEL
+            synth_X.append(new_norm + noise)
+            synth_y.append(cls)
+
+    if not synth_X:
+        return np.empty((0, X_held_in.shape[1])), np.array([], dtype=int)
+
+    X_synth = scaler.inverse_transform(np.array(synth_X))
+    y_synth = np.array(synth_y, dtype=int)
+    return X_synth, y_synth
+
+
+def synthetic_within_loso_evaluate(
+    dataset: str, model_name: str, base_model,
+    strategy: str, use_log_ratio: bool, seed: int,
+):
+    X_real, y_real, groups = _worker_data["real"][dataset]
+    logo = LeaveOneGroupOut()
+
+    all_true, all_pred, all_proba = [], [], []
+
+    for train_idx, test_idx in logo.split(X_real, y_real, groups):
+        X_held_in, y_held_in = X_real[train_idx], y_real[train_idx]
+        X_test,    y_test    = X_real[test_idx],  y_real[test_idx]
+
+        if len(np.unique(y_held_in)) < 2 or len(np.unique(y_test)) < 2:
+            continue
+
+        X_synth, y_synth = _generate_interpolation_synthetic(
+            X_held_in, y_held_in, n=_SYNTH_N, seed=seed
+        )
+        if len(X_synth) == 0 or len(np.unique(y_synth)) < 2:
+            continue
+
+        X_tr, X_te = prepare_features(X_synth, X_test, use_log_ratio)
+        model   = tune_and_fit(model_name, clone(base_model), X_tr, y_synth, seed)
+        y_pred  = model.predict(X_te)
+        y_proba = model.predict_proba(X_te)[:, 1]
+
+        all_true.extend(y_test)
+        all_pred.extend(y_pred)
+        all_proba.extend(y_proba)
+
+    if not all_true or len(np.unique(all_true)) < 2:
+        return None
+
+    all_true  = np.array(all_true)
+    all_pred  = np.array(all_pred)
+    all_proba = np.array(all_proba)
+
+    point = compute_metrics(all_true, all_pred, all_proba)
+    ci    = bootstrap_ci(all_true, all_pred, all_proba, seed)
+
+    return format_row(
+        exp_type="Synthetic→Within",
+        train_ds=f"Synthetic_{dataset}",
+        test_ds=dataset,
+        model_name=model_name,
+        adaptation=strategy,
+        n_train=_SYNTH_N,
+        n_test=len(all_true),
+        n_synth_samples=_SYNTH_N,
+        n_features=X_real.shape[1],
+        point=point,
+        ci=ci,
+        synth_method="Interpolation",
+        seed=seed,
+    )
+
+
 def main():
     print("=" * 70)
     print("Cross-Dataset EEG Stress Classification — Synthetic Training")
@@ -508,7 +628,8 @@ def main():
     n_smeth  = len(SYNTH_METHODS)
     n_da     = len(DA_METHODS)
     runs_per_seed = n_strat * n_mod * (
-        n_smeth * (len(within_pairs) + len(cross_pairs))
+        len(within_pairs)
+        + n_smeth * len(cross_pairs)
         + len(merged_pairs)
         + len(cross_pairs)
         + n_smeth * len(cross_pairs)
@@ -528,15 +649,16 @@ def main():
         tasks = []
         for strategy, use_lr in FEATURE_STRATEGIES.items():
 
+            for ds in datasets:
+                for model_name, base_model in base_models.items():
+                    tasks.append((
+                        f"Syn_{ds}→Real_{ds} [Interpolation/LOSO] {model_name}",
+                        synthetic_within_loso_evaluate,
+                        (ds, model_name, base_model, strategy, use_lr),
+                        {"seed": seed},
+                    ))
+
             for sm in SYNTH_METHODS:
-                for ds in datasets:
-                    for model_name, base_model in base_models.items():
-                        tasks.append((
-                            f"Syn_{ds}→Real_{ds} [{sm}] {model_name}",
-                            synthetic_to_real_evaluate,
-                            (ds, ds, model_name, base_model, strategy, use_lr),
-                            {"synth_method": sm, "seed": seed},
-                        ))
                 for src, tgt in cross_pairs:
                     for model_name, base_model in base_models.items():
                         tasks.append((

@@ -1,6 +1,6 @@
-# Cross-Dataset EEG Stress Classification via Synthetic Data Generation and Domain Adaptation
+# Synthetic EEG Data for Cross-Dataset Stress Classification
 
-Cross-dataset generalization remains a critical limitation in EEG-based stress classification, primarily due to variability in acquisition hardware, subject populations, and experimental paradigms. While prior work has focused on improving within-dataset performance, the role of synthetic data in enabling robust cross-dataset transfer remains underexplored. This study presents a systematic evaluation of synthetic data generation and domain-adapted synthesis for cross-dataset EEG stress classification across four publicly available datasets using a unified band-power feature representation. Five experimental conditions were compared across all ordered source-target pairs, including real-data baselines, synthetic-only training, standard augmentation, and domain-adapted synthesis using covariance alignment, optimal transport, and prototype alignment. A substantial domain gap was observed, with cross-dataset performance falling consistently below within-dataset baselines. Training exclusively on synthetic data improved cross-dataset performance beyond real-data training in most source-target pairs, while standard augmentation yielded only marginal gains. Domain-adapted synthesis achieved the most consistent improvements, with the largest gains observed in transfers between datasets with systematic distributional offsets, particularly workload-to-stress transfers where the mismatch was structured and correctable. Analysis of transfer patterns revealed that shared task paradigm does not guarantee transferability: two datasets employing the same stress induction task produced among the worst cross-dataset results, while paradigm-mismatched pairs with different hardware configurations achieved the strongest transfer. These results indicate that hardware, electrode montage, and procedural differences can dominate paradigm similarity in determining cross-dataset performance, and that low channel-count source data may act as an implicit regularizer by forcing models to learn spectrally broad features. A source-target taxonomy based on paradigm relationship is proposed to guide the selection of domain adaptation strategies. The findings demonstrate that synthetic data can capture transferable representations that improve cross-dataset generalization, that domain adaptation is most effective when distributional mismatch is structured rather than noisy, and that empirical assessment of distributional alignment should take precedence over paradigm-level assumptions when designing cross-dataset EEG classification systems.
+This repository investigates whether synthetically generated EEG data can substitute for or augment real training data in cross-dataset stress and mental workload classification. Four publicly available EEG datasets are used, and three synthesis strategies are evaluated: correlation-guided interpolation, conditional GAN (WGAN-GP), and conditional VAE. A domain-adaptation stage (CORAL, Optimal Transport, Prototype-shift) is also included.
 
 ---
 
@@ -26,6 +26,9 @@ Cross-dataset generalization remains a critical limitation in EEG-based stress c
 ├── synthetic_gan_vae.py
 ├── synthetic_domain_adapted.py
 ├── cross_dataset_generalization_synthetic.py
+├── within_loso_real.py
+├── sensitivity_sweep.py
+├── mw_exclusion.py
 ├── plot_results.py
 └── requirements.txt
 ```
@@ -144,7 +147,13 @@ Output (written to `Synthetic/`):
 
 ### Step 3 — Cross-dataset evaluation
 
-Trains classifiers (LDA, Logistic Regression, Random Forest, SVM-RBF, XGBoost) on each synthetic source and evaluates on real target data across all 12 source→target pairs and 5 random seeds.
+Trains classifiers (LDA, Logistic Regression, Random Forest, SVM-RBF, XGBoost) on each synthetic source and evaluates on real target data across all 12 source→target pairs and 5 random seeds. Experiment types covered:
+
+- `Synthetic→Within` — proper LOSO: synthetic data generated from held-in subjects per fold, tested on held-out subject's real data (interpolation only)
+- `Synthetic→Cross` — train on synthetic from source dataset, test on real target (all three synthesis methods)
+- `Real→Cross` — train on real source, test on real target (baseline)
+- `Real+Synthetic→Cross` — augment real source with synthetic, test on real target
+- `Real+SyntheticDA→Cross` — augment real source with domain-adapted synthetic, test on real target
 
 ```bash
 python cross_dataset_generalization_synthetic.py
@@ -156,9 +165,56 @@ Output:
 
 ---
 
-### Step 4 — Plot results
+### Step 4 — Within-dataset LOSO evaluation (real data)
+
+Evaluates all five classifiers on each dataset under leave-one-subject-out cross-validation using only real EEG data. Provides the within-dataset real-data upper-bound reference (Table 2 replacement). Uses the same 10-dimensional band-power features, log transform, per-subject z-score normalisation, and hyperparameter grids as Step 3.
+
+```bash
+python within_loso_real.py
+```
+
+Output:
+- `within_loso_real_results.csv` — per-fold, per-model, per-seed rows
+- `within_loso_real_summary.csv` — per-dataset mean AUC ± SEM (best model per seed, averaged over 5 seeds)
+
+---
+
+### Step 5 — Sensitivity sweep: synthetic sample size
+
+Sweeps the number of interpolation-based synthetic samples (`n` ∈ {30, 50, 70, 100, 150, 200}) across all 12 source→target pairs and 5 seeds. For each `n`, synthetic data is generated fresh from the real source data. The best-mean-AUC model is selected per pair per `n`, and results are averaged across pairs to produce a summary curve.
+
+```bash
+python sensitivity_sweep.py
+```
+
+Output:
+- `sensitivity_sweep_results.csv` — one row per (n, seed, source, target, model)
+- `sensitivity_sweep_summary.csv` — mean AUC per n (best model per pair, mean ± SEM over 12 pairs)
+- `sensitivity_sweep_plot.png` — line plot of mean AUC vs. n with ±SEM error bars
+
+---
+
+### Step 6 — MW exclusion check
+
+Re-evaluates all key conclusions using only the three non-workload datasets (EDMA, MS, SAM40), giving 6 source→target pairs instead of 12. Loads the aggregated results from Step 3 and filters out any row where the Mental Workload (MW) dataset appears as source or target. Reports mean AUC per condition for the full 12-pair and MW-excluded 6-pair sets, and checks whether the paper's main rankings hold.
+
+> Requires `cross_dataset_results_synthetic_agg.csv` from Step 3.
+
+```bash
+python mw_exclusion.py
+```
+
+Output:
+- `mw_exclusion_summary.csv` — mean AUC per condition (full vs. MW-excluded)
+- `mw_exclusion_pairs.csv` — best-model AUC per source→target pair for each condition
+
+---
+
+### Step 7 — Plot results
 
 Generates publication-quality figures from the aggregated results CSV.
+
+> Requires `cross_dataset_results_synthetic_agg.csv` from Step 3.
 
 ```bash
 python plot_results.py
