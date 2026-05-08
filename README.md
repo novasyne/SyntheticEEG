@@ -43,7 +43,7 @@ The four datasets must be downloaded separately and placed under `Data/`:
 |---------|--------|--------|-------------|
 | [EDMA](https://zenodo.org/record/7318435) | `Data/EDMA/` | `.edf` | 36-subject stress/baseline EEG |
 | [SAM40](https://www.kaggle.com/datasets/hmason123/sam40-eeg-dataset) | `Data/SAM40/` | `.mat` | 40-subject Stroop/relax EEG |
-| [MentalWorkloadEEG](https://zenodo.org/record/7413447) | `Data/MentalWorkloadEEG/` | `.parquet` + `.json` | Flight simulator workload EEG |
+| [MentalWorkloadEEG](https://zenodo.org/record/7413447) | `Data/MentalWorkloadEEG/` | `.parquet` + `.json` | Flight simulator cognitive-workload EEG (2 unique subjects, 5 sessions — LOSO is 2-fold) |
 | [MentalStress](https://physionet.org/content/eegmat/1.0.0/) | `Data/MentalStress/` | `.edf` | 20-subject Stroop stress EEG |
 
 Expected layout within `Data/`:
@@ -138,10 +138,11 @@ python synthetic_gan_vae.py
 python synthetic_domain_adapted.py
 ```
 
-Output (written to `Synthetic/`):
-- `Synthetic_Aggregated_{DS}.csv` — interpolation-based (DS = EDMA, SAM, MW, MS)
-- `Synthetic_Aggregated_{DS}_GAN.csv` / `_VAE.csv` — deep generative models
-- `Synthetic_Adapted_{SRC}_to_{TGT}_{METHOD}.csv` — domain-adapted variants (METHOD = CORAL, OT, Prototype)
+Output (all files written to the **current directory** — move them into the `Synthetic/` subfolder before running Step 3):
+- `Synthetic_Aggregated_{DS}.csv` — interpolation-based synthetic data (DS = EDMA, SAM, MW, MS)
+- `Original_Aggregated_{DS}.csv` — aggregated real data in the shared 10-feature space (DS = EDMA, SAM, MW, MS)
+- `Synthetic_Aggregated_{DS}_GAN.csv` / `_VAE.csv` — deep generative model outputs (all 4 datasets)
+- `Synthetic_Adapted_{SRC}_to_{TGT}_{METHOD}.csv` — domain-adapted variants (12 source→target pairs × 3 methods = 36 files; METHOD = CORAL, OT, Prototype)
 
 ---
 
@@ -167,7 +168,9 @@ Output:
 
 ### Step 4 — Within-dataset LOSO evaluation (real data)
 
-Evaluates all five classifiers on each dataset under leave-one-subject-out cross-validation using only real EEG data. Provides the within-dataset real-data upper-bound reference (Table 2 replacement). Uses the same 10-dimensional band-power features, log transform, per-subject z-score normalisation, and hyperparameter grids as Step 3.
+Evaluates all five classifiers on each dataset under leave-one-subject-out cross-validation using only real EEG data. Provides the within-dataset real-data upper-bound reference. Uses the same 10-dimensional band-power features, log transform, per-subject z-score normalisation, and hyperparameter grids as Step 3.
+
+> **Note:** MW has only 2 unique subjects across 5 sessions, so its LOSO is a 2-fold evaluation rather than a full multi-subject LOSO.
 
 ```bash
 python within_loso_real.py
