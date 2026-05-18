@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
 from matplotlib.ticker import MultipleLocator
 
 warnings.filterwarnings("ignore")
@@ -32,12 +33,15 @@ matplotlib.rcParams.update({
     "savefig.bbox":      "tight",
 })
 
+_C4_KEY = "Real+Synthetic"
+
 BLUES = {
-    "Real→Cross":          "#1f4e79",
-    "Interpolation":       "#2e75b6",
-    "VAE":                 "#5ba3d9",
-    "GAN":                 "#9dc3e6",
-    "Interp + DA":         "#c6a600",
+    "Real→Cross":  "#1f4e79",
+    "Interpolation": "#2e75b6",
+    "VAE":         "#5ba3d9",
+    "GAN":         "#9dc3e6",
+    _C4_KEY:       "#70ad47",
+    "Interp + DA": "#c6a600",
 }
 
 DATA_FILE = "cross_dataset_results_synthetic_agg.csv"
@@ -127,39 +131,41 @@ def fig1_model_comparison(df: pd.DataFrame):
     print(f"Saved → {out}")
 
 
+def _best_per_pair(df_sub):
+    """Mean ± SEM of best-model AUC per source-target pair, matching Table 3 aggregation."""
+    best = df_sub.groupby(["Train_Dataset", "Test_Dataset"])["AUC"].max()
+    return best.mean(), best.sem()
+
+
 def fig2_condition_comparison(df: pd.DataFrame):
     rc  = df[df["Experiment_Type"] == "Real→Cross"]
     sc  = df[df["Experiment_Type"] == "Synthetic→Cross"]
+    aug = df[df["Experiment_Type"] == "Real+Synthetic→Cross"]
     da  = df[df["Experiment_Type"] == "Real+SyntheticDA→Cross"]
 
     conditions = [
-        ("Real→Cross\n(Baseline)",         rc,                                        BLUES["Real→Cross"]),
-        ("Interpolation\n→Cross",           sc[sc["Synth_Method"] == "Interpolation"], BLUES["Interpolation"]),
-        ("VAE\n→Cross",                     sc[sc["Synth_Method"] == "VAE"],           BLUES["VAE"]),
-        ("GAN\n→Cross",                     sc[sc["Synth_Method"] == "GAN"],           BLUES["GAN"]),
-        ("Real + DA-Synthetic\n→Cross", da, BLUES["Interp + DA"]),
+        ("Real→Cross\n(C2 Baseline)",       rc,                                        BLUES["Real→Cross"]),
+        ("Interpolation\n(C3)",             sc[sc["Synth_Method"] == "Interpolation"], BLUES["Interpolation"]),
+        ("VAE\n(C3)",                       sc[sc["Synth_Method"] == "VAE"],           BLUES["VAE"]),
+        ("GAN\n(C3)",                       sc[sc["Synth_Method"] == "GAN"],           BLUES["GAN"]),
+        ("Real+Synthetic\n(C4)",            aug,                                       BLUES[_C4_KEY]),
+        ("Real+DA-Synthetic\n(C5)",         da,                                        BLUES["Interp + DA"]),
     ]
 
-    labels = [c[0] for c in conditions]
-    means  = [c[1]["AUC"].mean() for c in conditions]
-    sems   = [c[1]["AUC"].sem()  for c in conditions]
-    colors = [c[2] for c in conditions]
+    labels             = [c[0] for c in conditions]
+    means, sems        = zip(*[_best_per_pair(c[1]) for c in conditions])
+    means, sems        = list(means), list(sems)
+    colors             = [c[2] for c in conditions]
 
-    x = np.arange(len(conditions))
+    x     = np.arange(len(conditions))
     bar_w = 0.55
 
-    fig, ax = plt.subplots(figsize=(12, 7))
+    _, ax = plt.subplots(figsize=(16, 8))
 
-    bars = ax.bar(
-        x, means, bar_w,
-        color=colors, edgecolor="black", linewidth=1.0,
-        zorder=3
-    )
-    ax.errorbar(
-        x, means, yerr=sems,
-        fmt="none", ecolor="black", elinewidth=1.4,
-        capsize=6, capthick=1.4, zorder=4
-    )
+    ax.bar(x, means, bar_w, color=colors, edgecolor="black", linewidth=1.0, zorder=3)
+    ax.errorbar(x, means, yerr=sems,
+                fmt="none", ecolor="black", elinewidth=1.4,
+                capsize=6, capthick=1.4, zorder=4)
 
     for xi, (m, s) in enumerate(zip(means, sems)):
         ax.text(xi, m + s + 0.003, f"{m:.3f}",
@@ -168,33 +174,30 @@ def fig2_condition_comparison(df: pd.DataFrame):
 
     ax.axhline(0.5, color="black", linestyle="--", linewidth=1.3,
                alpha=0.7, zorder=2)
-    ax.text(len(conditions) - 0.5 + 0.05, 0.5 + 0.002,
-            "Chance", ha="right", va="bottom",
-            fontsize=11, color="black", style="italic")
 
     baseline = means[0]
     vae_mean = means[2]
     delta    = vae_mean - baseline
-    bx, bx2 = x[0], x[2]
+    bx, bx2  = x[0], x[2]
     by = max(means[:3]) + max(sems[:3]) + 0.022
-    ax.annotate(
-        "", xy=(bx2, by), xytext=(bx, by),
-        arrowprops=dict(arrowstyle="<->", color="black", lw=1.2)
-    )
+    ax.annotate("", xy=(bx2, by), xytext=(bx, by),
+                arrowprops={"arrowstyle": "<->", "color": "black", "lw": 1.2})
     ax.text((bx + bx2) / 2, by + 0.003,
             f"ΔAUC = {delta:+.3f}", ha="center", va="bottom",
             fontsize=11, color="black")
 
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=12, color="black")
-    ax.set_ylabel("Mean AUC (cross-dataset)", fontsize=15, color="black")
-    ax.set_xlabel("Training Condition", fontsize=15, color="black")
+    ax.set_xticklabels(labels, fontsize=13, color="black",
+                       fontweight="bold", rotation=20, ha="right",
+                       rotation_mode="anchor")
+    ax.set_ylabel("Mean AUC (cross-dataset)", fontsize=18, color="black", fontweight="bold")
+    ax.set_xlabel("Training Condition", fontsize=18, color="black", fontweight="bold")
     ax.set_title(
         "Cross-Dataset AUC by Training Condition\n"
-        "(Mean ± SEM over All Source–Target Pairs and Classifiers)",
-        fontsize=16, color="black", pad=14
+        "(Best model per source–target pair, mean ± SEM across 12 pairs)",
+        fontsize=20, color="black", fontweight="bold", pad=16
     )
-    ax.set_ylim(0, 0.65)
+    ax.set_ylim(0, 0.70)
     ax.yaxis.set_minor_locator(MultipleLocator(0.01))
     ax.yaxis.set_major_locator(MultipleLocator(0.05))
     ax.grid(axis="y", which="major", linestyle="--", linewidth=0.6,
@@ -202,15 +205,18 @@ def fig2_condition_comparison(df: pd.DataFrame):
     ax.set_axisbelow(True)
 
     patches = [
-        mpatches.Patch(facecolor=BLUES["Real→Cross"],   edgecolor="black", label="Real training data"),
-        mpatches.Patch(facecolor=BLUES["Interpolation"],edgecolor="black", label="Synthetic — Interpolation"),
-        mpatches.Patch(facecolor=BLUES["VAE"],          edgecolor="black", label="Synthetic — VAE"),
-        mpatches.Patch(facecolor=BLUES["GAN"],          edgecolor="black", label="Synthetic — GAN"),
-        mpatches.Patch(facecolor=BLUES["Interp + DA"],  edgecolor="black", label="Real + Domain-Adapted Synthetic"),
+        mpatches.Patch(facecolor=BLUES["Real→Cross"],      edgecolor="black", label="C2 — Real"),
+        mpatches.Patch(facecolor=BLUES["Interpolation"],   edgecolor="black", label="C3 — Synthetic (Interpolation)"),
+        mpatches.Patch(facecolor=BLUES["VAE"],             edgecolor="black", label="C3 — Synthetic (VAE)"),
+        mpatches.Patch(facecolor=BLUES["GAN"],             edgecolor="black", label="C3 — Synthetic (GAN)"),
+        mpatches.Patch(facecolor=BLUES[_C4_KEY],           edgecolor="black", label="C4 — Real + Synthetic"),
+        mpatches.Patch(facecolor=BLUES["Interp + DA"],     edgecolor="black", label="C5 — Real + Domain-Adapted Synthetic"),
+        mlines.Line2D([], [], color="black", linestyle="--", linewidth=1.3,
+                      alpha=0.7, label="Chance (AUC = 0.50)"),
     ]
     legend = ax.legend(
         handles=patches,
-        title="Training Data Type",
+        title="Training Condition",
         title_fontsize=13,
         loc="upper left",
         bbox_to_anchor=(1.01, 1.0),
