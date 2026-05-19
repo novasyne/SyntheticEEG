@@ -41,10 +41,10 @@ The four datasets must be downloaded separately and placed under `Data/`:
 
 | Dataset | Folder | Format | Description |
 |---------|--------|--------|-------------|
-| [EDMA](https://zenodo.org/record/7318435) | `Data/EDMA/` | `.edf` | 36-subject stress/baseline EEG |
+| [EDMA](https://zenodo.org/record/7318435) | `Data/EDMA/` | `.edf` | 35-subject stress/baseline EEG |
 | [SAM40](https://www.kaggle.com/datasets/hmason123/sam40-eeg-dataset) | `Data/SAM40/` | `.mat` | 40-subject Stroop/relax EEG |
 | [MentalWorkloadEEG](https://zenodo.org/record/7413447) | `Data/MentalWorkloadEEG/` | `.parquet` + `.json` | Flight simulator cognitive-workload EEG (2 unique subjects, 5 sessions — LOSO is 2-fold) |
-| [MentalStress](https://physionet.org/content/eegmat/1.0.0/) | `Data/MentalStress/` | `.edf` | 20-subject Stroop stress EEG |
+| [MentalStress](https://physionet.org/content/eegmat/1.0.0/) | `Data/MentalStress/` | `.edf` | 24-subject Stroop stress EEG |
 
 Expected layout within `Data/`:
 
