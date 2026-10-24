@@ -29,7 +29,16 @@ This repository investigates whether synthetically generated EEG data can substi
 ├── within_loso_real.py
 ├── sensitivity_sweep.py
 ├── mw_exclusion.py
-├── plot_results.py
+├── e1_e2_rerun.py                 # Target-free model selection (main results)
+├── e3_discrepancy.py
+├── e4_stats.py
+├── e7_within_loso.py
+├── e8_sensitivity_sweep.py
+├── revision_summary.py
+├── appendices.py
+├── check_mw_sampling_rate.py
+├── revision_results.csv           # Full per-run results (input to summary and appendix scripts)
+├── *.csv                          # Result tables
 └── requirements.txt
 ```
 
@@ -193,7 +202,6 @@ python sensitivity_sweep.py
 Output:
 - `sensitivity_sweep_results.csv` — one row per (n, seed, source, target, model)
 - `sensitivity_sweep_summary.csv` — mean AUC per n (best model per pair, mean ± SEM over 12 pairs)
-- `sensitivity_sweep_plot.png` — line plot of mean AUC vs. n with ±SEM error bars
 
 ---
 
@@ -213,19 +221,104 @@ Output:
 
 ---
 
-### Step 7 — Plot results
+### Step 7 — Target-free model selection (main results)
 
-Generates publication-quality figures from the aggregated results CSV.
+Re-runs the cross-dataset evaluation of Step 3 while recording two validation signals that do not use target labels: `Source_CV_AUC` (3-fold stratified CV AUC on the training matrix) and `SourceReal_AUC` (AUC of the fitted model on the real source dataset). Also adds a `Real-Sub70` baseline (70 real source samples, 10 independent draws) matched in size to the synthetic training set. Per-seed checkpoints are written to `checkpoints/` and skipped on restart.
 
-> Requires `cross_dataset_results_synthetic_agg.csv` from Step 3.
+> Requires the files in `Processed/` and `Synthetic/`.
 
 ```bash
-python plot_results.py
+python e1_e2_rerun.py
 ```
 
 Output:
-- `fig_model_comparison.png` — mean cross-dataset AUC per classifier by training condition
-- `fig_condition_comparison.png` — mean cross-dataset AUC per training condition with SEM bars
+- `revision_results.csv` — one row per (seed, source, target, condition, model, synthesis method), including both target-free signals and the target test AUC
+
+---
+
+### Step 8 — Domain discrepancy
+
+Computes MMD², 2-Wasserstein distance, CORAL distance and domain-classifier separability between each real or synthetic source and the real target, in the shared 10-D band-power space.
+
+```bash
+python e3_discrepancy.py
+```
+
+Output:
+- `discrepancy_per_pair.csv`, `discrepancy_summary.csv`
+
+---
+
+### Step 9 — Summary tables and statistics
+
+Compares the model-selection protocols (target-oracle, source-CV, source-real, and the primary target-free "best-valid" protocol P6) and computes dependence-aware statistics (cluster bootstrap and dataset-level sign-flip permutation, via `e4_stats.py`) with effect sizes and confidence intervals.
+
+> Requires `revision_results.csv` (Step 7) and `discrepancy_per_pair.csv` (Step 8).
+
+```bash
+python revision_summary.py
+```
+
+Output :
+- `table_selection_protocols.csv`, `table_selection_protocols_noMW.csv`
+- `table_stats_P1.csv`, `table_stats_P6.csv`
+- `table_per_model.csv`, `table_per_pair_P6.csv`, `table_discrepancy_vs_auc.csv`
+
+---
+
+### Step 10 — Within-dataset LOSO with nested model selection
+
+Leave-one-subject-out evaluation in which the model is chosen using only an inner 3-fold CV on the held-in subjects; the held-out subject is never used for selection. Covers real-only and synthetic-based training conditions.
+
+```bash
+python e7_within_loso.py
+```
+
+Output:
+- `within_loso_targetfree.csv`
+- `table_within_loso_protocols.csv`
+
+---
+
+### Step 11 — Sensitivity sweep with target-free selection
+
+Repeats the sample-size sweep of Step 5 (`n` ∈ {30, 50, 70, 100, 150, 200}) and selects the model per pair using `SourceReal_AUC` rather than target AUC.
+
+```bash
+python e8_sensitivity_sweep.py
+```
+
+Output:
+- `sensitivity_sweep_targetfree.csv`
+- `sensitivity_sweep_summary_targetfree.csv`
+
+---
+
+### Step 12 — Appendix tables
+
+Per-pair AUC for all 12 source→target pairs under each training condition (with per-synthesis-method breakdown), and AUC / F1 / precision / recall of the selected configuration, using protocol P6.
+
+> Requires `revision_results.csv` (Step 7).
+
+```bash
+python appendices.py
+```
+
+Output:
+- `appendixB_pairwise_P6.csv`
+- `appendixC_metrics_P6.csv`
+
+---
+
+### Optional — Verify the MW sampling rate
+
+`preprocess_mw.py` assumes a native rate of 128 Hz because the Parquet file carries no sampling rate. This script estimates the true rate from sample counts and the wall-clock phase timestamps in the flight JSONs.
+
+> Requires the raw data in `Data/MentalWorkloadEEG/`.
+
+```bash
+python check_mw_sampling_rate.py
+```
 
 ---
 
@@ -239,7 +332,6 @@ Output:
 | `xgboost` | Gradient boosting classifier |
 | `torch` | Conditional GAN and VAE training |
 | `POT` | Optimal Transport domain adaptation |
-| `matplotlib` | Figure generation |
 | `pyarrow` | Reading the MW dataset Parquet file |
 
 Full pinned versions are listed in `requirements.txt`.
