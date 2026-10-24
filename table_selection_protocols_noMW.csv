@@ -1,0 +1,7 @@
+Protocol,Real-Cross,RealSub70-Cross,Synthetic-Cross,Real+Synthetic-Cross,DA-Cross,Δ RealSub70-Cross,Δ Synthetic-Cross,Δ Real+Synthetic-Cross,Δ DA-Cross
+P1 target-oracle (as published),0.5582,0.5537,0.624,0.5732,0.5713,-0.0045,0.0658,0.015,0.0131
+P6 best-valid target-free  [PRIMARY],0.5042,0.4863,0.502,0.5033,0.4962,-0.0179,-0.0022,-0.0008,-0.008
+P2 source-CV (uniform),0.5042,0.4863,0.5261,0.5033,0.4962,-0.0179,0.0219,-0.0008,-0.008
+P3 source-real (uniform),0.513,0.4774,0.502,0.4896,0.5046,-0.0355,-0.011,-0.0234,-0.0083
+P4 selection-free,0.5059,0.4946,0.4707,0.5057,0.4975,-0.0113,-0.0352,-0.0002,-0.0084
+P5 pre-specified (LDA+VAE/Prototype),0.5145,0.5055,0.5169,0.5161,0.504,-0.0091,0.0024,0.0016,-0.0105

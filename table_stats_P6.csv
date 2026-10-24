@@ -1,0 +1,8 @@
+Comparison,Mean_Delta,CI_Low,CI_High,Positive_Pairs,N_Pairs,Wilcoxon_p_naive,ClusterBoot_p,SignFlip_p,SignFlip_p_floor,RankBiserial,RB_CI_Low,RB_CI_High
+Synthetic-Cross vs Real-Cross,-0.0191,-0.0452,0.0189,4,12,0.2334,0.3097,0.125,0.0625,-0.333,-1.0,0.0
+Synthetic-Cross vs RealSub70 (size-matched),-0.004,-0.0503,0.0687,5,12,0.7334,0.6738,0.75,0.0625,-0.167,-1.0,1.0
+Real+Synthetic-Cross vs Real-Cross,-0.0079,-0.0276,0.0092,5,12,0.3013,0.4086,0.25,0.0625,-0.167,-1.0,1.0
+Real+Synthetic-Cross vs RealSub70 (size-matched),0.0073,-0.0285,0.0491,6,12,0.6221,0.7287,0.625,0.0625,0.0,-1.0,1.0
+DA-Cross vs Real-Cross,-0.0004,-0.0216,0.0317,7,12,1.0,0.7054,1.0,0.0625,0.167,-1.0,1.0
+DA-Cross vs RealSub70 (size-matched),0.0148,-0.0084,0.0347,8,12,0.1763,0.106,0.125,0.0625,0.333,0.0,1.0
+RealSub70 vs Real-Cross (size effect alone),-0.0152,-0.0497,0.01,5,12,0.1763,0.3083,0.25,0.0625,-0.167,-1.0,1.0

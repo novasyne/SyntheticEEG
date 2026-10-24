@@ -1,0 +1,5 @@
+Condition,Protocol,EDMA,MS,MW,SAM,Mean,Mean_stress_only
+Real-Within,oracle (as published),0.8635,0.8142,0.5281,0.807,0.7532,0.8282
+Real-Within,target-free (nested),0.8635,0.8052,0.4619,0.8067,0.7343,0.8251
+Synthetic-Within,oracle (as published),0.8461,0.8224,0.5905,0.7927,0.7629,0.8204
+Synthetic-Within,target-free (nested),0.8191,0.8018,0.5248,0.7885,0.7335,0.8031

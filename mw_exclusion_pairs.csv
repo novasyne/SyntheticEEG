@@ -1,0 +1,37 @@
+condition,scope,source,target,best_model,auc
+Real-Cross,full,EDMA,MS,XGBoost,0.6644
+Real-Cross,full,EDMA,MW,Logistic Regression,0.6104
+Real-Cross,full,EDMA,SAM,Logistic Regression,0.5385
+Real-Cross,full,MS,EDMA,Logistic Regression,0.7112
+Real-Cross,full,MS,MW,XGBoost,0.455
+Real-Cross,full,MS,SAM,Logistic Regression,0.4456
+Real-Cross,full,MW,EDMA,LDA,0.5814
+Real-Cross,full,MW,MS,XGBoost,0.3441
+Real-Cross,full,MW,SAM,Random Forest,0.5901
+Real-Cross,full,SAM,EDMA,Random Forest,0.6307
+Real-Cross,full,SAM,MS,XGBoost,0.3219
+Real-Cross,full,SAM,MW,Random Forest,0.5907
+Real-Cross,excl,EDMA,MS,XGBoost,0.6644
+Real-Cross,excl,EDMA,SAM,Logistic Regression,0.5385
+Real-Cross,excl,MS,EDMA,Logistic Regression,0.7112
+Real-Cross,excl,MS,SAM,Logistic Regression,0.4456
+Real-Cross,excl,SAM,EDMA,Random Forest,0.6307
+Real-Cross,excl,SAM,MS,XGBoost,0.3219
+Synthetic-Cross,full,Synthetic_EDMA,MS,LDA,0.6531
+Synthetic-Cross,full,Synthetic_EDMA,MW,LDA,0.5868
+Synthetic-Cross,full,Synthetic_EDMA,SAM,LDA,0.5489
+Synthetic-Cross,full,Synthetic_MS,EDMA,Logistic Regression,0.7448
+Synthetic-Cross,full,Synthetic_MS,MW,SVM-RBF,0.5123
+Synthetic-Cross,full,Synthetic_MS,SAM,LDA,0.5318
+Synthetic-Cross,full,Synthetic_MW,EDMA,LDA,0.6848
+Synthetic-Cross,full,Synthetic_MW,MS,Logistic Regression,0.4916
+Synthetic-Cross,full,Synthetic_MW,SAM,Random Forest,0.6569
+Synthetic-Cross,full,Synthetic_SAM,EDMA,LDA,0.6616
+Synthetic-Cross,full,Synthetic_SAM,MS,LDA,0.5739
+Synthetic-Cross,full,Synthetic_SAM,MW,LDA,0.6388
+Synthetic-Cross,excl,Synthetic_EDMA,MS,LDA,0.6531
+Synthetic-Cross,excl,Synthetic_EDMA,SAM,LDA,0.5489
+Synthetic-Cross,excl,Synthetic_MS,EDMA,Logistic Regression,0.7448
+Synthetic-Cross,excl,Synthetic_MS,SAM,LDA,0.5318
+Synthetic-Cross,excl,Synthetic_SAM,EDMA,LDA,0.6616
+Synthetic-Cross,excl,Synthetic_SAM,MS,LDA,0.5739

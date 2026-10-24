@@ -639,7 +639,7 @@ def main():
 
     all_results = []
 
-    executor = ProcessPoolExecutor(max_workers=16, initializer=_worker_init)
+    executor = ProcessPoolExecutor(max_workers=10, initializer=_worker_init)
     for seed in SEEDS:
         print(f"\n{'─'*70}")
         print(f"SEED {seed}")
